@@ -1,10 +1,10 @@
 'use strict'
 require('dotenv').config()
-const WHATSAPP_VERSION = process.env.WHATSAPP_VERSION || 'v17.0'
+const WHATSAPP_VERSION = process.env.WHATSAPP_VERSION || 'v21.0'
 const WHATSAPP_TOKEN = process.env.WHATSAPP_TOKEN
 
 const VF_API_KEY = process.env.VF_API_KEY
-const VF_VERSION_ID = process.env.VF_VERSION_ID || 'development'
+const VF_VERSION_ID = process.env.VF_VERSION_ID || 'production'
 const VF_PROJECT_ID = process.env.VF_PROJECT_ID || null
 
 const fs = require('fs')
