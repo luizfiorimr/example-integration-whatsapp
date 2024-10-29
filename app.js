@@ -1,10 +1,10 @@
 'use strict'
 require('dotenv').config()
-const WHATSAPP_VERSION = process.env.WHATSAPP_VERSION || 'v21.0'
+const WHATSAPP_VERSION = process.env.WHATSAPP_VERSION || 'v17.0'
 const WHATSAPP_TOKEN = process.env.WHATSAPP_TOKEN
 
 const VF_API_KEY = process.env.VF_API_KEY
-const VF_VERSION_ID = process.env.VF_VERSION_ID || 'production'
+const VF_VERSION_ID = process.env.VF_VERSION_ID || 'development'
 const VF_PROJECT_ID = process.env.VF_PROJECT_ID || null
 
 const fs = require('fs')
@@ -60,7 +60,7 @@ app.post('/webhook', async (req, res) => {
     if (isNotInteractive) {
       let phone_number_id =
         req.body.entry[0].changes[0].value.metadata.phone_number_id
-      user_id = req.body.entry[0].changes[0].value.messages[0].from // extract the phone number from the webhook payload
+      user_id = req.body.entry[0].changes[0].value.messages[0].from
       let user_name =
         req.body.entry[0].changes[0].value.contacts[0].profile.name
       if (req.body.entry[0].changes[0].value.messages[0].text) {
@@ -204,10 +204,13 @@ app.get('/webhook', (req, res) => {
 
 async function interact(user_id, request, phone_number_id, user_name) {
   clearTimeout(noreplyTimeout)
-  if (!session) {
-    session = `${VF_VERSION_ID}.${rndID()}`
+  session = `${user_id}`
+  // Verifica se a transcrição já existe, se não, cria uma nova
+  if (!transcriptExists(user_id)) {
+    createTranscript(user_id, user_name);
   }
-
+  // Atualiza a transcrição com a nova mensagem
+  updateTranscript(user_id, request);
   await axios({
     method: 'PATCH',
     url: `${VF_DM_URL}/state/user/${encodeURI(user_id)}/variables`,
@@ -239,10 +242,10 @@ async function interact(user_id, request, phone_number_id, user_name) {
   let isEnding = response.data.filter(({ type }) => type === 'end')
   if (isEnding.length > 0) {
     console.log('isEnding')
-    isEnding = true
+    isEnding = false
     saveTranscript(user_name)
   } else {
-    isEnding = false
+    isEnding = true
   }
 
   let messages = []
@@ -396,14 +399,14 @@ async function interact(user_id, request, phone_number_id, user_name) {
         type: 'buttons',
         buttons: buttons,
       })
-    } else if (response.data[i].type == 'no-reply' && isEnding == false) {
+    } else if (response.data[i].type == 'no-reply' && isEnding == true) {
       noreplyTimeout = setTimeout(function () {
         sendNoReply(user_id, request, phone_number_id, user_name)
       }, Number(response.data[i].payload.timeout) * 1000)
     }
   }
   await sendMessage(messages, phone_number_id, user_id)
-  if (isEnding == true) {
+  if (isEnding == false) {
     session = null
   }
 }
@@ -543,10 +546,10 @@ function truncateString(str, maxLength = 20) {
   return ''
 }
 
-async function saveTranscript(username) {
+async function saveTranscript(user_name) {
   if (VF_PROJECT_ID) {
-    if (!username || username == '' || username == undefined) {
-      username = 'Anonymous'
+    if (!user_name || user_name == '' || user_name == undefined) {
+      user_name = 'Anonymous'
     }
     axios({
       method: 'put',
@@ -560,7 +563,7 @@ async function saveTranscript(username) {
         versionID: VF_VERSION_ID,
         projectID: VF_PROJECT_ID,
         user: {
-          name: username,
+          name: user_name,
           image: VF_TRANSCRIPT_ICON,
         },
       },
@@ -574,4 +577,28 @@ async function saveTranscript(username) {
       .catch((err) => console.log(err))
   }
   session = `${VF_VERSION_ID}.${rndID()}`
+}
+
+// Função para verificar se a transcrição já existe
+function transcriptExists(user_id) {
+  // Exemplo de lógica para verificar se a transcrição existe
+  // Aqui você pode verificar em um banco de dados ou em um arquivo
+  // Retorne true se existir, false caso contrário
+  return false; // Substitua com a lógica real
+}
+
+// Função para criar uma nova transcrição
+function createTranscript(user_id, user_name) {
+  // Lógica para criar uma nova transcrição
+  // Exemplo: salvar em um banco de dados ou criar um novo arquivo
+  console.log(`Criando nova transcrição para o usuário: ${user_name}`);
+  // Implementar a lógica de criação aqui
+}
+
+// Função para atualizar a transcrição existente
+function updateTranscript(user_id, request) {
+  // Lógica para atualizar a transcrição com a nova mensagem
+  // Exemplo: atualizar um registro no banco de dados ou adicionar a um arquivo
+  console.log(`Atualizando transcrição para o usuário: ${user_id} com a mensagem: ${request.payload}`);
+  // Implementar a lógica de atualização aqui
 }
